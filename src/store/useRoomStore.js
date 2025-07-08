@@ -23,6 +23,7 @@ const useRoomStore = create((set) => ({
       set((state) => ({ rooms: [...state.rooms, response.data], loading: false }));
     } catch (error) {
       set({ error: error.message || "Failed to create room", loading: false });
+      console.log(error);
     }
   },
 
@@ -35,6 +36,7 @@ const useRoomStore = create((set) => ({
         loading: false,
       }));
     } catch (error) {
+      console.log("Error updating room:", error);
       set({ error: error.message || "Failed to update room", loading: false });
     }
   },
