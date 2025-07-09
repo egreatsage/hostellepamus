@@ -1,57 +1,73 @@
-import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import dbConnect from "@/lib/mongoose";
-import User from "@/models/User";
-import { compare } from "bcryptjs";
+import NextAuth from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import bcrypt from 'bcryptjs';
+import dbConnect from '@/lib/mongoose';
+import User from '@/models/User';
+
+
+
 
 export const authOptions = {
   providers: [
     CredentialsProvider({
-      name: "Credentials",
+      name: 'Credentials',
       credentials: {
-        email: { label: "Email", type: "email", placeholder: "email@example.com" },
+        email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        await dbConnect();
+        try {
+          await dbConnect();
+          
+          const user = await User.findOne({ email: credentials.email });
+          
+          if (!user) {
+            throw new Error('No user found with this email');
+          }
 
-        const user = await User.findOne({ email: credentials.email });
-        if (!user) {
-          throw new Error("No user found with the email");
+          const isValid = await bcrypt.compare(credentials.password, user.password);
+          
+          if (!isValid) {
+            throw new Error('Invalid password');
+          }
+
+          return {
+            id: user._id.toString(),
+            email: user.email,
+            role: user.role,
+          };
+        } catch (error) {
+          console.error('Auth error:', error);
+          throw error;
         }
-
-        const isValid = await compare(credentials.password, user.password);
-        if (!isValid) {
-          throw new Error("Invalid password");
-        }
-
-        return { id: user._id, email: user.email, role: user.role };
       }
-    }),
+    })
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role;
         token.id = user.id;
+        token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
       if (token) {
-        session.user.role = token.role;
         session.user.id = token.id;
+        session.user.role = token.role;
       }
       return session;
     }
   },
-  session: {
-    strategy: "jwt"
-  },
   pages: {
-    signIn: "/login"
+    signIn: '/login',
+    error: '/login',
   },
-  secret: process.env.NEXTAUTH_SECRET
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);

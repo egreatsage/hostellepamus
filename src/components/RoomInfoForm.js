@@ -11,6 +11,7 @@ import {
   CheckCircleIcon,
   XMarkIcon
 } from "@heroicons/react/24/outline";
+import { useEffect } from "react";
 
 export default function RoomInfoForm({ onSubmit, defaultValues, onCancel }) {
   const {
@@ -32,6 +33,16 @@ export default function RoomInfoForm({ onSubmit, defaultValues, onCancel }) {
   });
 
   const watchedStatus = watch("status");
+
+   useEffect(() => {
+    if (defaultValues) {
+      // The photoUrls array needs to be converted back to a string for the input field
+      reset({
+        ...defaultValues,
+        photoUrls: defaultValues.photoUrls ? defaultValues.photoUrls.join(", ") : "",
+      });
+    }
+  }, [defaultValues, reset]);
 
   const handleFormSubmit = async (data) => {
     try {
