@@ -8,6 +8,7 @@ import Room from "@/models/Room";
 
 export async function GET(request) {
   const token = await getToken({ req: request });
+  console.log("Token ID:", token?.id);
   if (!token) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
@@ -15,19 +16,31 @@ export async function GET(request) {
   await dbConnect();
 
   try {
+    // 1. Find the user's detailed information
     const studentInfo = await StudentInfo.findOne({ userId: token.id });
+    console.log("StudentInfo found:", studentInfo);
+
+    // If no student info, they haven't started a booking yet.
     if (!studentInfo) {
-      return new Response(JSON.stringify({ message: "No profile information found." }), { status: 200 });
+      return new Response(JSON.stringify({ booking: null }), { status: 200 });
     }
 
+    // 2. Find the most recent booking associated with this student
+    // We sort by creation date in descending order and limit to 1.
     const booking = await Booking.findOne({ studentId: studentInfo._id })
-                                 .populate('roomId', 'roomNumber price', Room)
-                                 .sort({ createdAt: -1 });
- console.log("Profile data fetched successfully:", { studentInfo, booking });
+                                 .sort({ createdAt: -1 }) // Get the latest booking
+                                 .populate({
+                                     path: 'roomId',
+                                     model: Room,
+                                     select: 'roomNumber price' // Only select the fields you need
+                                 });
+    console.log("Booking found:", booking);
+
+    // 3. Return all relevant data
     return new Response(JSON.stringify({ studentInfo, booking }), { status: 200 });
-        
 
   } catch (error) {
+    console.error("Profile API Error:", error);
     return new Response(JSON.stringify({ error: "Failed to fetch profile data." }), { status: 500 });
   }
 }
