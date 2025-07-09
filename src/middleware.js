@@ -1,69 +1,56 @@
-const { getToken } = require("next-auth/jwt");
-const { NextResponse } = require("next/server");
+import { getToken } from "next-auth/jwt";
+import { NextResponse } from "next/server";
 
-  async function withAuth(request,roles=[]){
-    try {
-        const token = await getToken({
-            req: request,})
-            if(!token || !!token.role){
-                return new NextResponse(
-                    JSON.stringify({ error: "Aunethntication required" }),
-                    { status: 401 }
-                )
-            }
-            if (roles.length>0 && !roles.includes(token.role)){
-                return new NextResponse(
-                    JSON.stringify({ error: "Insufficient permissions" }),
-                    { status: 403 }
-                )
-            }
-            return NextResponse.next();
-    } catch (error) {
-        console.error("Error in withAuth middleware:", error);
-        return new NextResponse(
-            JSON.stringify({ error: "An error occurred during authentication" }),
-            { status: 500 }
-        );
-    }
-  }export async function middleware(request){
-    const {pathname}= request.nextUrl;
-    if (
-        pathname.startsWith('/_next')||
-        pathname.startsWith('api/auth')||
-        (pathname ==='/api/users' && request.method ==='POST') ||
-        pathname === '/'||
-        pathname ==='/logn'||
-        pathname === '/register'
-    ){
-        return NextResponse.next();
-    }
-    if (pathname.startsWith('/admin')) {
-        return withAuth(request, ['admin']);
-    }
-    if (pathname.startsWith('/student')) {
-        return withAuth(request, ['student', 'admin']);
-    }
+export async function middleware(request) {
+  const { pathname } = request.nextUrl;
 
-    //  if (pathname.startsWith('/api')) {
-    // // Course routes
-    // if (pathname.startsWith('/api/courses')) {
-    //   // For specific course operations (PUT, DELETE, etc)
-    //   if (pathname.match(/\/api\/courses\/[^/]+/)) {
-    //     const courseId = pathname.split('/')[3];
-    //     return withCourseAccess(request, courseId);
-    //   }
-    //   // For general course operations (GET all, POST)
-    //   return withAuth(request);
-    // }}
+  // Allow requests for static files, API authentication, and specific pages to pass through
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api/auth') ||
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname === '/'
+  ) {
+    return NextResponse.next();
   }
-  export const config = {
-    matcher:[
-          /*
-     * Match all request paths except:
-     * 1. /_next (Next.js internals)
-     * 2. /static (static files)
-     * 3. /favicon.ico, /robots.txt (static files)
+
+  const token = await getToken({ req: request });
+
+  // If there's no token, redirect to the login page
+  if (!token) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('callbackUrl', pathname); // Optionally pass the original URL as a callback
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Role-based protection
+  if (pathname.startsWith('/admin')) {
+    if (token.role !== 'admin') {
+      // If not an admin, redirect to the home page or an unauthorized page
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
+
+  if (pathname.startsWith('/student')) {
+    if (token.role !== 'student' && token.role !== 'admin') {
+      // If not a student or admin, redirect
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
      */
-    '/((?!_next|static|favicon.ico|robots.txt).*)',
-    ]
-  }
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
+};

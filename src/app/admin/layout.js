@@ -7,9 +7,9 @@ import React from 'react';
 export default function RoomsLayout({ children }) {
    const router = useRouter();
   const { data: session, status } = useSession();
+  
    useEffect(() => {
     if (status === 'authenticated') {
-      // Redirect if the user is not a parent
       if (session?.user?.role !== 'admin') {
         router.push('/');
       }
@@ -17,12 +17,9 @@ export default function RoomsLayout({ children }) {
       router.push('/login');
     }
   }, [status, session, router]);
-
   if (status === 'loading' || !session) {
     return <div className="flex items-center justify-center h-screen"><LoadingSpinner /></div>;
   }
-
-  // Prevent rendering the layout for non-parent roles while redirecting
   if (session?.user?.role !== 'admin') {
     return null;
   }

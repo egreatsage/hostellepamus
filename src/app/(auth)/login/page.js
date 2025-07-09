@@ -91,7 +91,7 @@ const LoginPage = () => {
         email: formData.email,
         password: formData.password,
       });
-      
+      setIsLoading(false);
       if (result?.error) {
         throw new Error(result.error);
       }
