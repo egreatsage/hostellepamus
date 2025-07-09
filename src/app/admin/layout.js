@@ -2,7 +2,7 @@
 import AdminNav from '@/components/AdminNav';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export default function RoomsLayout({ children }) {
    const router = useRouter();
@@ -18,7 +18,9 @@ export default function RoomsLayout({ children }) {
     }
   }, [status, session, router]);
   if (status === 'loading' || !session) {
-    return <div className="flex items-center justify-center h-screen"><LoadingSpinner /></div>;
+    return <div className="flex items-center justify-center h-screen">
+      <h1>loading...</h1>
+    </div>;
   }
   if (session?.user?.role !== 'admin') {
     return null;
