@@ -1,25 +1,27 @@
-// src/app/api/mpesa/stkpush/route.js
 import { getAccessToken, getTimestamp } from "@/lib/mpesa";
 import axios from "axios";
-import Booking from "@/models/Booking";
 import dbConnect from "@/lib/mongoose";
+import Booking from "@/models/Booking";
 
 export async function POST(request) {
-  await dbConnect()
   try {
-    const { phoneNumber, amount,bookingId } = await request.json();
+    await dbConnect();
 
-    // Validate inputs
-    if (!phoneNumber || !amount) {
-      return new Response(JSON.stringify({ error: 'Phone number and amount are required' }),{ status: 400 });
+    const { phoneNumber, amount, bookingId } = await request.json();
+
+    if (!phoneNumber || !amount || !bookingId) {
+      return new Response(JSON.stringify({ error: 'Phone number, amount, and bookingId are required' }), { status: 400 });
     }
 
-    // Format phone number
     let formattedPhone = phoneNumber;
     if (phoneNumber.startsWith('0')) {
       formattedPhone = `254${phoneNumber.slice(1)}`;
     } else if (phoneNumber.startsWith('+254')) {
       formattedPhone = phoneNumber.slice(1);
+    }
+
+    if (!/^254\d{9}$/.test(formattedPhone)) {
+      return new Response(JSON.stringify({ error: 'Invalid Safaricom phone number format' }), { status: 400 });
     }
 
     const token = await getAccessToken();
@@ -34,11 +36,11 @@ export async function POST(request) {
       BusinessShortCode: shortCode,
       Password: password,
       Timestamp: timestamp,
-      TransactionType: "CustomerPayBillOnline", // Changed from CustomerBuyGoodsOnline
+      TransactionType: "CustomerPayBillOnline",
       Amount: amount,
-      PartyA: formattedPhone, // Use the formatted phone number
+      PartyA: formattedPhone,
       PartyB: shortCode,
-      PhoneNumber: formattedPhone, // Use the formatted phone number
+      PhoneNumber: formattedPhone,
       CallBackURL: callbackURL,
       AccountReference: "Hostel Room Payment",
       TransactionDesc: "Payment for a hostel room",
@@ -53,15 +55,18 @@ export async function POST(request) {
         },
       }
     );
-     await Booking.findByIdAndUpdate(bookingId, {
+
+    // Save the CheckoutRequestID to the booking
+    await Booking.findByIdAndUpdate(bookingId, {
       checkoutRequestId: response.data.CheckoutRequestID,
     });
 
-    // return new Response(JSON.stringify(response.data), { status: 200 });
+    return new Response(JSON.stringify(response.data), { status: 200 });
 
   } catch (error) {
     console.error("STK Push Error:", error.response ? error.response.data : error.message);
     const errorMessage = error.response ? error.response.data.errorMessage : "An unexpected error occurred.";
+    // **This is the critical fix:** Return a Response object in the catch block.
     return new Response(JSON.stringify({ error: errorMessage }), { status: 500 });
   }
 }

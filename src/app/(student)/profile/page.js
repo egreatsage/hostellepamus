@@ -61,7 +61,7 @@ function PaymentModal({ booking, onClose, onPaymentSuccess }) {
                 toast.error("Payment failed. Please try again.");
                 setIsLoading(false);
             }
-        }, 3000); // Poll every 3 seconds
+        }, 30000); // Poll every 3 seconds
 
         // Timeout after 2 minutes
         setTimeout(() => {
