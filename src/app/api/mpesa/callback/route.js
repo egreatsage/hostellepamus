@@ -1,29 +1,61 @@
 // src/app/api/mpesa/callback/route.js
+import dbConnect from "@/lib/mongoose";
+import Booking from "@/models/Booking";
+import Occupancy from "@/models/Occupancy";
+import Payment from "@/models/Payment";
+import Balance from "@/models/Balance";
+
 export async function POST(request) {
+  await dbConnect();
   const callbackData = await request.json();
-  console.log('STK Callback response:', JSON.stringify(callbackData));
 
-  // Extract info from callback
-  const stkCallback = callbackData.Body.stkCallback;
+  const checkoutRequestId = callbackData.Body.stkCallback.CheckoutRequestID;
+  const resultCode = callbackData.Body.stkCallback.ResultCode;
 
-  // Always respond to Safaricom with a success to acknowledge receipt
-  // res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+  const booking = await Booking.findOne({ checkoutRequestId }).populate('roomId');
 
-  // Process the callback data as needed for your application
-  if (stkCallback.ResultCode === 0) {
+  if (!booking) {
+    return new Response(JSON.stringify({ error: "Booking not found" }), { status: 404 });
+  }
+
+  if (resultCode === 0) {
     // Payment successful
-    const transactionDetails = stkCallback.CallbackMetadata.Item;
-    // Process the successful payment
-    console.log('Payment successful', transactionDetails);
-    
-    // In a real application, you would:
-    // 1. Update your database
-    // 2. Fulfill the order
-    // 3. Notify the customer
-    // etc.
+    const metadata = callbackData.Body.stkCallback.CallbackMetadata.Item;
+    const phoneNumber = metadata.find(item => item.Name === 'PhoneNumber').Value;
+    const amount = metadata.find(item => item.Name === 'Amount').Value;
+    const mpesaReceiptNumber = metadata.find(item => item.Name === 'MpesaReceiptNumber').Value;
+
+    // 1. Update Booking status
+    booking.status = 'allocated';
+    await booking.save();
+
+    // 2. Create Payment record
+    await Payment.create({
+      studentId: booking.studentId,
+      bookingId: booking._id,
+      amount: amount,
+      mpesaTransactionId: mpesaReceiptNumber,
+      phoneNumber: phoneNumber,
+      merchantRequestId: callbackData.Body.stkCallback.MerchantRequestID,
+    });
+
+    // 3. Create Occupancy record
+    await Occupancy.create({
+      studentId: booking.studentId,
+      roomId: booking.roomId._id,
+    });
+
+    // 4. Create Balance record
+    await Balance.create({
+        studentId: booking.studentId,
+        currentBalance: booking.roomId.price
+    });
+
   } else {
     // Payment failed
-    console.log('Payment failed:', stkCallback.ResultDesc);
+    booking.status = 'payment_failed';
+    await booking.save();
   }
-  return new Response(JSON.stringify({ ResultCode: 0, ResultDesc: 'Accepted' }), { status: 200 });
+
+  return new Response(JSON.stringify({ message: "Callback received" }), { status: 200 });
 }

@@ -38,6 +38,7 @@ function PaymentModal({ booking, onClose, onPaymentSuccess }) {
         body: JSON.stringify({
           phoneNumber: formattedPhone, // Send the formatted number
           amount: booking.roomId.price,
+          bookingId: booking._id,
         }),
       });
 
@@ -45,10 +46,36 @@ function PaymentModal({ booking, onClose, onPaymentSuccess }) {
         const result = await response.json();
         throw new Error(result.error || "Failed to initiate payment.")
       }
-      onClose(); // Use onClose consistently
-      toast.dismiss();
-      toast.success("STK push initiated. Please complete the transaction on your phone.");
-      onPaymentSuccess();
+      const pollPaymentStatus = setInterval(async () => {
+            const statusResponse = await fetch(`/api/bookings/status/${booking._id}`);
+            const { status } = await statusResponse.json();
+
+            if (status === 'allocated') {
+                clearInterval(pollPaymentStatus);
+                toast.dismiss();
+                toast.success("Payment successful and room allocated!");
+                onPaymentSuccess();
+            } else if (status === 'payment_failed') {
+                clearInterval(pollPaymentStatus);
+                toast.dismiss();
+                toast.error("Payment failed. Please try again.");
+                setIsLoading(false);
+            }
+        }, 3000); // Poll every 3 seconds
+
+        // Timeout after 2 minutes
+        setTimeout(() => {
+            clearInterval(pollPaymentStatus);
+            if (isLoading) {
+                toast.dismiss();
+                toast.error("Payment timed out. Please check your phone and try again.");
+                setIsLoading(false);
+            }
+        }, 120000);
+      // onClose(); // Use onClose consistently
+      // toast.dismiss();
+      // toast.success("STK push initiated. Please complete the transaction on your phone.");
+      // onPaymentSuccess();
     } catch (error) {
       toast.dismiss();
       toast.error(error.message || "Payment failed.");

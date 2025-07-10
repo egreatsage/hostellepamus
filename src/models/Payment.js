@@ -6,6 +6,8 @@ const paymentSchema = new mongoose.Schema({
   bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', required: true },
   amount: { type: Number, required: true },
   mpesaTransactionId: { type: String, required: true, unique: true },
+  phoneNumber: { type: String },
+  merchantRequestId: { type: String },
   status: { type: String, enum: ['completed', 'failed'], default: 'completed' },
 }, { timestamps: true });
 

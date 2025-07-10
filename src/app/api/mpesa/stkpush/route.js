@@ -1,10 +1,13 @@
 // src/app/api/mpesa/stkpush/route.js
 import { getAccessToken, getTimestamp } from "@/lib/mpesa";
 import axios from "axios";
+import Booking from "@/models/Booking";
+import dbConnect from "@/lib/mongoose";
 
 export async function POST(request) {
+  await dbConnect()
   try {
-    const { phoneNumber, amount } = await request.json();
+    const { phoneNumber, amount,bookingId } = await request.json();
 
     // Validate inputs
     if (!phoneNumber || !amount) {
@@ -50,8 +53,11 @@ export async function POST(request) {
         },
       }
     );
+     await Booking.findByIdAndUpdate(bookingId, {
+      checkoutRequestId: response.data.CheckoutRequestID,
+    });
 
-    return new Response(JSON.stringify(response.data), { status: 200 });
+    // return new Response(JSON.stringify(response.data), { status: 200 });
 
   } catch (error) {
     console.error("STK Push Error:", error.response ? error.response.data : error.message);
