@@ -1,12 +1,25 @@
 // src/app/api/mpesa/stkpush/route.js
-import { generateToken, getTimestamp } from "@/lib/mpesa";
+import { getAccessToken, getTimestamp } from "@/lib/mpesa";
 import axios from "axios";
 
 export async function POST(request) {
   try {
     const { phoneNumber, amount } = await request.json();
 
-    const token = await generateToken();
+    // Validate inputs
+    if (!phoneNumber || !amount) {
+      return new Response(JSON.stringify({ error: 'Phone number and amount are required' }),{ status: 400 });
+    }
+
+    // Format phone number
+    let formattedPhone = phoneNumber;
+    if (phoneNumber.startsWith('0')) {
+      formattedPhone = `254${phoneNumber.slice(1)}`;
+    } else if (phoneNumber.startsWith('+254')) {
+      formattedPhone = phoneNumber.slice(1);
+    }
+
+    const token = await getAccessToken();
     const timestamp = getTimestamp();
     const shortCode = process.env.MPESA_BUSINESS_SHORT_CODE;
     const passkey = process.env.MPESA_PASSKEY;
@@ -18,11 +31,11 @@ export async function POST(request) {
       BusinessShortCode: shortCode,
       Password: password,
       Timestamp: timestamp,
-      TransactionType: "CustomerBuyGoodsOnline",
+      TransactionType: "CustomerPayBillOnline", // Changed from CustomerBuyGoodsOnline
       Amount: amount,
-      PartyA: phoneNumber,
+      PartyA: formattedPhone, // Use the formatted phone number
       PartyB: shortCode,
-      PhoneNumber: phoneNumber,
+      PhoneNumber: formattedPhone, // Use the formatted phone number
       CallBackURL: callbackURL,
       AccountReference: "Hostel Room Payment",
       TransactionDesc: "Payment for a hostel room",

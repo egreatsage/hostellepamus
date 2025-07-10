@@ -2,10 +2,23 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import { signOut, useSession } from 'next-auth/react';
+import toast from 'react-hot-toast';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { data: session, status } = useSession();
 
+  const handleSignOut = () => {
+      signOut({ callbackUrl: '/' });
+     toast.info("Bye!", {
+        style: {
+          background: '#272727',
+          color: '#EFD09E',
+          border: '1px solid #D4AA7D',
+        },
+      });
+   };
   const toggleMenu = () => {
     setIsOpen(!isOpen);
   };
@@ -44,14 +57,19 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* CTA Button (Desktop) */}
+        
           <div className="hidden md:block">
-            <Link
-              href="/get-started"
-              className="bg-[#D4AA7D] text-[#272727] px-4 py-2 rounded-md text-sm font-medium hover:bg-[#EFD09E] transition-colors duration-300 shadow-md hover:shadow-lg"
-            >
-              Get Started
-            </Link>
+           {
+            status === 'authenticated' && (
+              <button
+                onClick={handleSignOut}
+                className="text-[#EFD09E] hover:bg-[#D4AA7D] hover:text-[#272727] block px-3 py-2 rounded-md text-base font-medium transition-all duration-300 w-full text-left"
+              >
+                Sign Out
+              </button>
+            )
+          }
+        
           </div>
 
           {/* Mobile menu button */}
@@ -85,13 +103,18 @@ const Navbar = () => {
               {link.label}
             </Link>
           ))}
-          <Link
-            href="/get-started"
-            className="bg-[#D4AA7D] text-[#272727] block px-3 py-2 rounded-md text-base font-medium hover:bg-[#EFD09E] transition-colors duration-300 mt-4 text-center"
-            onClick={() => setIsOpen(false)}
-          >
-            Get Started
-          </Link>
+
+          {
+            status === 'authenticated' && (
+              <button
+                onClick={handleSignOut}
+                className="text-[#EFD09E] hover:bg-[#D4AA7D] hover:text-[#272727] block px-3 py-2 rounded-md text-base font-medium transition-all duration-300 w-full text-left"
+              >
+                Sign Out
+              </button>
+            )
+          }
+        
         </div>
       </div>
     </nav>

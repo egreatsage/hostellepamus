@@ -12,11 +12,19 @@ function PaymentModal({ booking, onClose, onPaymentSuccess }) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handlePayment = async () => {
-    // if (!/^(07|01|254)\d{8}$/.test(phoneNumber)) {
-    //     toast.error("Please enter a valid phone number (e.g., 0712345678).");
-    //     return;
-    // }
+   const handlePayment = async () => {
+    // Phone number validation and formatting
+    let formattedPhone = phoneNumber;
+    if (phoneNumber.startsWith('0')) {
+      formattedPhone = `254${phoneNumber.slice(1)}`;
+    } else if (phoneNumber.startsWith('+254')) {
+      formattedPhone = phoneNumber.slice(1);
+    }
+
+    if (!/^254\d{9}$/.test(formattedPhone)) {
+        toast.error("Please enter a valid Safaricom phone number (e.g., 0712345678).");
+        return;
+    }
     
     setIsLoading(true);
     toast.loading("Processing payment...");
@@ -28,17 +36,18 @@ function PaymentModal({ booking, onClose, onPaymentSuccess }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          phoneNumber: phoneNumber,
+          phoneNumber: formattedPhone, // Send the formatted number
           amount: booking.roomId.price,
         }),
       });
 
       if(!response.ok){
-        throw new Error(RenderResult.error || "failed to initiate payment.")
+        const result = await response.json();
+        throw new Error(result.error || "Failed to initiate payment.")
       }
-      onclose();
+      onClose(); // Use onClose consistently
       toast.dismiss();
-      toast.success("Payment successful!");
+      toast.success("STK push initiated. Please complete the transaction on your phone.");
       onPaymentSuccess();
     } catch (error) {
       toast.dismiss();
