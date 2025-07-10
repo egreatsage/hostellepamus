@@ -13,23 +13,30 @@ function PaymentModal({ booking, onClose, onPaymentSuccess }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handlePayment = async () => {
-    if (!/^(07|01)\d{8}$/.test(phoneNumber)) {
-        toast.error("Please enter a valid phone number (e.g., 0712345678).");
-        return;
-    }
+    // if (!/^(07|01|254)\d{8}$/.test(phoneNumber)) {
+    //     toast.error("Please enter a valid phone number (e.g., 0712345678).");
+    //     return;
+    // }
     
     setIsLoading(true);
     toast.loading("Processing payment...");
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      console.log("Simulating payment confirmation for:", {
-        bookingId: booking._id,
-        amount: booking.roomId.price,
-        phoneNumber,
+      const response = await fetch('/api/mpesa/stkpush', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumber: phoneNumber,
+          amount: booking.roomId.price,
+        }),
       });
 
+      if(!response.ok){
+        throw new Error(RenderResult.error || "failed to initiate payment.")
+      }
+      onclose();
       toast.dismiss();
       toast.success("Payment successful!");
       onPaymentSuccess();

@@ -18,7 +18,7 @@ export async function GET(request) {
   try {
     // 1. Find the user's detailed information
     const studentInfo = await StudentInfo.findOne({ userId: token.id });
-    console.log("StudentInfo found:", studentInfo);
+   
 
     // If no student info, they haven't started a booking yet.
     if (!studentInfo) {
@@ -34,7 +34,7 @@ export async function GET(request) {
                                      model: Room,
                                      select: 'roomNumber price' // Only select the fields you need
                                  });
-    console.log("Booking found:", booking);
+  
 
     // 3. Return all relevant data
     return new Response(JSON.stringify({ studentInfo, booking }), { status: 200 });
